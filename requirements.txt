@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-keycloak
+requests
+httpx
+pydantic
+python-dotenv
+alembic
+sqlalchemy
+asyncpg
