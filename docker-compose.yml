@@ -1,35 +1,16 @@
 version: "3.8"
 
 services:
-  pkd-keycloak:
+  keycloak:
     image: quay.io/keycloak/keycloak:latest
-    container_name: pkd-keycloak
+    container_name: keycloak
     ports:
       - "8080:8080"
     environment:
-      KEYCLOAK_ADMIN: PKD-admin
-      KEYCLOAK_ADMIN_PASSWORD: PKD-admin
-    command: ["start-dev"]
-
-  pkd-postgres:
-    image: postgres:latest
-    container_name: pkd-postgres
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_PROXY: edge
+    command: ["start-dev", "--import-realm"] # Aqui está a correção!
+    volumes:
+      - ./realm-config.json:/opt/keycloak/data/import/realm-config.json
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-
-  pkd-api:
-    build: .
-    container_name: pkd-api
-    depends_on:
-      - pkd-keycloak
-      - pkd-postgres
-    env_file:
-      - .env
-    ports:
-      - "8000:8000"
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

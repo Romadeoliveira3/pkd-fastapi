@@ -1,0 +1,108 @@
+{
+  "id": "PKD-realm",
+  "realm": "PKD-realm",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "confidential-client",
+      "name": "PKD Secure Client",
+      "description": "Client for secure API authentication",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "PKD-client-secret",
+      "redirectUris": ["http://localhost:8000/callback"],
+      "webOrigins": ["*"],
+      "adminUrl": "http://localhost:8000/callback",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "testuser",
+      "email": "testuser@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "testuser123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator role"
+      },
+      {
+        "name": "user",
+        "description": "Standard user role"
+      }
+    ]
+  },
+  "authenticationFlows": [
+    {
+      "alias": "browser",
+      "description": "Browser authentication flow",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "requirement": "ALTERNATIVE",
+          "priority": 20
+        }
+      ]
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "verify-email",
+      "enabled": false,
+      "defaultAction": false
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "update-profile",
+      "enabled": false,
+      "defaultAction": false
+    },
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "verify-profile",
+      "enabled": false,
+      "defaultAction": false
+    }
+  ]
+}
