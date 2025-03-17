@@ -1,32 +1,48 @@
 import json
-from typing import Dict, List
+from typing import Dict, List, Annotated, Any
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Security
-from fastapi.security import OAuth2AuthorizationCodeBearer
-from jose import jwt, jwk
+import asyncio
+from fastapi import Depends, FastAPI, HTTPException, Security, Request, APIRouter
+from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.security import HTTPBearer
+
+
+from jose import jwt, jwk, JWTError
 from jose.exceptions import JWTError
 from pydantic import BaseModel
+
+from fastcrud.paginated import PaginatedListResponse, compute_offset, paginated_response
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configuração do Keycloak
 KEYCLOAK_URL = "http://localhost:8080"
 REALM_NAME = "PKD-realm"
 TOKEN_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token"
+INTROSPECT_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token/introspect"
+RESOURCE_REGISTRATION_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/authz/protection/resource_set"
+PERMISSION_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/authz/protection/permission"
+POLICY_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/authz/protection/uma-policy"
+
 KEYCLOAK_CLIENT_ID = "confidential-client"
 CLIENT_SECRET = "PKD-client-secret"
+
+# FastAPI app
+app = FastAPI()
 
 # JWKs URL
 JWKS_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/certs"
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl=f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/auth",
-    tokenUrl=f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token",
-    auto_error=False
-)
+# Cache das chaves públicas do Keycloak
+jwks_cache = None
+jwks_cache_lock = asyncio.Lock()
 
-# FastAPI app
-app = FastAPI()
+# OAuth2 scheme
+oauth2_scheme = HTTPBearer()
 
 # Modelo de requisição para obter o token
 class TokenRequest(BaseModel):
@@ -44,9 +60,8 @@ class Item(BaseModel):
     description: str
     price: float
 
-
 # Token validation function
-async def validate_token(token: str) -> TokenData:
+async def validate_token_jws(token: str) -> TokenData:
     try:
         # Fetch JWKS
         async with httpx.AsyncClient() as client:
@@ -103,66 +118,83 @@ def has_role(required_role: str):
         return token_data
     return role_checker
 
+
+async def validate_token_introspect(token: str) -> TokenData:
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "token": token,
+        "client_id": KEYCLOAK_CLIENT_ID,
+        "client_secret": CLIENT_SECRET
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(INTROSPECT_URL, headers=headers, data=data)
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Keycloak introspection failed")
+
+        result = response.json()
+        
+        if not result.get("active", False):
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return TokenData(username=result.get("preferred_username", "unknown"), roles=result.get("realm_access", {}).get("roles", []))
+
+
+async def validate_token(token: str = Depends(oauth2_scheme)) -> TokenData:
+    if not token or not token.credentials:
+        raise HTTPException(status_code=401, detail="Missing access token")
+
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "token": token.credentials,  # Obtém automaticamente o token do cabeçalho Authorization
+        "client_id": KEYCLOAK_CLIENT_ID,
+        "client_secret": CLIENT_SECRET
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(INTROSPECT_URL, headers=headers, data=data)
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Keycloak introspection failed")
+
+        result = response.json()
+        
+        if not result.get("active", False):
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return TokenData(username=result.get("preferred_username", "unknown"), roles=result.get("realm_access", {}).get("roles", []))
+
+
 # Routes
 @app.get("/public")
 async def public_endpoint():
     return {"message": "This is a public endpoint accessible to everyone."}
 
-@app.get("/protected")
-async def protected_endpoint(current_user: TokenData = Depends(get_current_user)):
-    return {
-        "message": f"Hello {current_user.username}, you are authenticated!",
-        "roles": current_user.roles,
+@app.post("/get-token-Bearer")
+async def get_token(request: TokenRequest):
+    data = {
+        "grant_type": "password",
+        "client_id": KEYCLOAK_CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scope": "openid",
+        "username": request.username,
+        "password": request.password
     }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(TOKEN_URL, data=data)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail=response.text)
+        
+        token_data = response.json()
+        
+        # Retorna apenas o `Bearer`
+        return { "token_type": token_data["token_type"], "id_token": token_data["id_token"],}
+    
+@app.get("/protected")
+async def protected_route(token: str = Depends(oauth2_scheme)):
+    return {"message": "Você acessou um endpoint protegido!"}
 
-# In-memory database for demo purposes
-items_db = {}
-
-# Create an item (Admin only)
-@app.post("/admin/items", dependencies=[Depends(has_role("admin"))])
-async def create_item(item: Item):
-    if item.name in items_db:
-        raise HTTPException(status_code=400, detail="Item already exists")
-    items_db[item.name] = item
-    return {"message": f"Item '{item.name}' created successfully", "item": item}
-
-# Read all items (Admin only)
-@app.get("/admin/items", dependencies=[Depends(has_role("admin"))])
-async def get_all_items():
-    return {"items": list(items_db.values())}
-
-# Read a single item by name (Admin only)
-@app.get("/admin/items/{item_name}", dependencies=[Depends(has_role("admin"))])
-async def get_item(item_name: str):
-    item = items_db.get(item_name)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
-
-# Update an item by name (Admin only)
-@app.put("/admin/items/{item_name}", dependencies=[Depends(has_role("admin"))])
-async def update_item(item_name: str, updated_item: Item):
-    if item_name not in items_db:
-        raise HTTPException(status_code=404, detail="Item not found")
-    items_db[item_name] = updated_item
-    return {"message": f"Item '{item_name}' updated successfully", "item": updated_item}
-
-# Delete an item by name (Admin only)
-@app.delete("/admin/items/{item_name}", dependencies=[Depends(has_role("admin"))])
-async def delete_item(item_name: str):
-    if item_name not in items_db:
-        raise HTTPException(status_code=404, detail="Item not found")
-    del items_db[item_name]
-    return {"message": f"Item '{item_name}' deleted successfully"}
-# @app.get("/admin")
-# async def admin_endpoint(current_user: TokenData = Depends(has_role("admin"))):
-#     return {
-#         "message": f"Hello {current_user.username}, you have admin access!"
-#     }
-
-@app.get("/developer", dependencies=[Depends(has_role("developer"))])
-async def developer_endpoint():
-    return {"items":list(items_db.values())}
 
 @app.post("/get-token")
 async def get_token(request: TokenRequest):
@@ -183,7 +215,18 @@ async def get_token(request: TokenRequest):
         
         return response.json()
 
-# async def developer_endpoint(current_user: TokenData = Depends(has_role("developer"))):
-#     return {
-#         "message": f"Hello {current_user.username}, you have developer read-only access!"
-#     }
+
+@app.get("/token-validation")
+async def test_token(token: str = Depends(oauth2_scheme)):
+    if not token:
+        raise HTTPException(status_code=401, detail="Token missing")
+    
+    return await validate_token_introspect(token.credentials)
+
+
+@app.get("/protected-w-validate")
+async def protected_route(current_user: TokenData = Depends(validate_token)):
+    return {
+        "message": f"Você acessou um endpoint protegido, {current_user.username}!",
+        "roles": current_user.roles
+    }

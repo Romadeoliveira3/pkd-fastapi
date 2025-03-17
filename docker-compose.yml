@@ -10,7 +10,7 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_PROXY: edge
-    command: ["start-dev", "--import-realm"] # Aqui está a correção!
+    command: ["start-dev", "--import-realm"]
     volumes:
       - ./realm-config.json:/opt/keycloak/data/import/realm-config.json
     restart: always

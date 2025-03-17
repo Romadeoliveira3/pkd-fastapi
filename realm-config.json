@@ -16,7 +16,9 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "serviceAccountsEnabled": true,
-      "authorizationServicesEnabled": false
+      "authorizationServicesEnabled": true,
+      "defaultClientScopes": ["uma_protection", "profile", "email", "roles"],
+      "optionalClientScopes": ["address", "phone"]
     }
   ],
   "users": [
