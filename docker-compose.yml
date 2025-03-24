@@ -17,25 +17,47 @@ services:
 
   auth-service:
     build:
-      context: .
-      dockerfile: microservice-auth/Dockerfile
+      context: ./microservice-auth
+      dockerfile: Dockerfile
     container_name: auth-service
     ports:
-      - "8001:8001"
+      - "8001:8000"
     depends_on:
       - keycloak
     restart: always
-    volumes:
-      - .:/app  
+
   item-service:
     build:
-      context: .
-      dockerfile: microservice-items/Dockerfile
+      context: ./microservice-items
+      dockerfile: Dockerfile
     container_name: item-service
     ports:
-      - "8002:8002"
+      - "8002:8000"
     depends_on:
       - auth-service
     restart: always
+
+  chipset-service:
+    build:
+      context: ./microservice-chipset
+      dockerfile: Dockerfile
+    container_name: chipset-service
+    ports:
+      - "8003:8000"
+    depends_on:
+      - auth-service
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-gateway
+    ports:
+      - "8088:80"
     volumes:
-      - .:/app  
+      - ./nginx:/etc/nginx/conf.d:ro          
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro # nginx.conf principal que inclui os outros
+    depends_on:
+      - auth-service
+      - item-service
+      - chipset-service
+    restart: always

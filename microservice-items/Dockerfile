@@ -1,20 +1,16 @@
-# Usando Python 3.11 como base
-FROM python:3.11
+FROM python:3.11-slim
 
-# Definir diretório de trabalho
-WORKDIR /app
-
-# Copiar os arquivos do contexto raiz para dentro do contêiner
-COPY ../pyproject.toml ../poetry.lock ./
-
-# Instalar o Poetry
 RUN pip install poetry
 
-# Instalar as dependências do projeto
-RUN poetry install --no-root --only main
+WORKDIR /app
 
-# Copiar os arquivos do microserviço
+COPY pyproject.toml ./
+
+RUN poetry config virtualenvs.create false \
+  && poetry install --no-root
+
 COPY . .
 
-# Definir comando de inicialização do serviço
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
