@@ -12,7 +12,7 @@ REALM_NAME = "PKD-realm"
 INTROSPECT_URL = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token/introspect"
 
 oauth2_scheme = HTTPBearer()
-app = FastAPI()
+app = FastAPI(root_path="/items")
 
 # === Modelos ===
 class TokenData(BaseModel):

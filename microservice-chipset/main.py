@@ -4,7 +4,9 @@ from typing import List
 from pydantic import BaseModel
 import httpx
 
-app = FastAPI()
+# ⚠️ Importante para funcionar corretamente via Nginx
+app = FastAPI(root_path="/chipsets")
+
 oauth2_scheme = HTTPBearer()
 
 # Configuração para introspecção com Keycloak
