@@ -15,26 +15,15 @@ services:
       - ./realm-config.json:/opt/keycloak/data/import/realm-config.json
     restart: always
 
-  auth-service:
-    build:
-      context: ./microservice-auth
-      dockerfile: Dockerfile
-    container_name: auth-service
-    ports:
-      - "8000"
-    depends_on:
-      - keycloak
-    restart: always
-
   item-service:
     build:
       context: ./microservice-items
       dockerfile: Dockerfile
     container_name: item-service
-    ports:
+    expose:
       - "8000"
     depends_on:
-      - auth-service
+      - keycloak
     restart: always
 
   chipset-service:
@@ -42,10 +31,10 @@ services:
       context: ./microservice-chipset
       dockerfile: Dockerfile
     container_name: chipset-service
-    ports:
+    expose:
       - "8000"
     depends_on:
-      - auth-service
+      - keycloak
     restart: always
 
   nginx:
@@ -54,10 +43,8 @@ services:
     ports:
       - "8088:80"
     volumes:
-      - ./nginx:/etc/nginx/conf.d:ro          
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - auth-service
       - item-service
       - chipset-service
     restart: always
