@@ -1,3 +1,0 @@
-get_token
-
-curl -X POST http://localhost:8080/realms/PKD-realm/protocol/openid-connect/token   -H "Content-Type: application/x-www-form-urlencoded"   -d "client_id=confidential-client"   -d "client_secret=PKD-client-secret"   -d "grant_type=password"   -d "username=admin"   -d "password=admin123"
