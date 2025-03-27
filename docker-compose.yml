@@ -1,8 +1,7 @@
-version: "3.8"
-
+version: '3.8'
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.1.2
     container_name: keycloak
     ports:
       - "8080:8080"
@@ -14,6 +13,8 @@ services:
     volumes:
       - ./realm-config.json:/opt/keycloak/data/import/realm-config.json
     restart: always
+    networks:
+      - internal
 
   item-service:
     build:
@@ -25,6 +26,8 @@ services:
     depends_on:
       - keycloak
     restart: always
+    networks:
+      - internal
 
   chipset-service:
     build:
@@ -36,6 +39,8 @@ services:
     depends_on:
       - keycloak
     restart: always
+    networks:
+      - internal
 
   nginx:
     image: nginx:latest
@@ -48,3 +53,9 @@ services:
       - item-service
       - chipset-service
     restart: always
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

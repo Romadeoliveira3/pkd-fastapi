@@ -18,7 +18,10 @@
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": true,
       "defaultClientScopes": ["uma_protection", "profile", "email", "roles"],
-      "optionalClientScopes": ["address", "phone"]
+      "optionalClientScopes": ["address", "phone"],
+      "attributes": {
+        "access.token.as.jwt": "false"
+      }
     }
   ],
   "users": [
