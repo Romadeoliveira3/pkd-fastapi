@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from auth import validate_token, TokenData
+from pydantic import BaseModel, EmailStr
+import httpx
+import os
 
 user_router = APIRouter(tags=["User"])
 
@@ -17,6 +20,25 @@ class NovoUsuario(BaseModel):
     enabled: bool = True
 
 
+# Obter token admin via client credentials
+async def get_admin_token():
+    url = f"{KEYCLOAK_SERVER_URL}/realms/{REALM_NAME}/protocol/openid-connect/token"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, data=data)
+
+    if response.status_code == 200:
+        return response.json()["access_token"]
+    else:
+        raise HTTPException(status_code=500, detail="Erro ao obter token admin do Keycloak.")
+
+# Rota protegida para criação de usuários no Keycloak
 @user_router.post("/signup", summary="Criar novo usuário no Keycloak")
 async def user_signup(
     user: NovoUsuario,
