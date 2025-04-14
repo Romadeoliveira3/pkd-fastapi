@@ -5,7 +5,6 @@ from auth import validate_token, TokenData
 
 user_router = APIRouter(tags=["User"])
 
-# URL de criação de usuário via NGINX → que repassa para Keycloak Admin API
 KEYCLOAK_CREATE_USER_URL = "http://nginx-gateway/auth/admin/realms/PKD-realm/users"
 
 class NovoUsuario(BaseModel):
@@ -14,6 +13,30 @@ class NovoUsuario(BaseModel):
     firstName: str
     lastName: str
     enabled: bool = True
+
+
+@user_router.get("/login", summary="Obter token de acesso do Keycloak")
+async def get_token(
+    username: str,
+    password: str
+):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://nginx-gateway/auth/token",
+            data={
+                "client_id": "confidential-client",
+                "client_secret": "PKD-client-secret",
+                "username": username,
+                "password": password,
+                "grant_type": "password",
+                "scope": "openid"
+            }
+        )
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
 
 @user_router.post("/signup", summary="Criar novo usuário no Keycloak via NGINX")
 async def user_signup(
