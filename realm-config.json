@@ -20,7 +20,8 @@
       "defaultClientScopes": ["uma_protection", "profile", "email", "roles"],
       "optionalClientScopes": ["address", "phone"],
       "attributes": {
-        "access.token.as.jwt": "false"
+        "access.token.as.jwt": "false",
+        "acess.token.lifespan": 999999
       }
     }
   ],
@@ -39,9 +40,7 @@
       ],
       "realmRoles": ["admin", "manage-users"],
       "clientRoles": {
-        "realm-management": [
-          "manage-users"
-        ]
+        "realm-management": ["manage-users"]
       }
     },
     {
