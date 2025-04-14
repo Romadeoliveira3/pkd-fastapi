@@ -37,7 +37,12 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["admin"]
+      "realmRoles": ["admin", "manage-users"],
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
+        ]
+      }
     },
     {
       "username": "testuser",
@@ -51,21 +56,9 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["admin"]
+      "realmRoles": ["user"]
     }
   ],
-  "roles": {
-    "realm": [
-      {
-        "name": "admin",
-        "description": "Administrator role"
-      },
-      {
-        "name": "user",
-        "description": "Standard user role"
-      }
-    ]
-  },
   "authenticationFlows": [
     {
       "alias": "browser",

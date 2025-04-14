@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from chipsets import chipsets_router
 from user import user_router
+# from microservice_chipset.chipsets import chipsets_router
+# from microservice_chipset.user import user_router
+
+
 
 app = FastAPI(
     title="Microserviço Central",

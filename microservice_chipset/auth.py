@@ -14,6 +14,7 @@ KEYCLOAK_CLIENT_SECRET = "PKD-client-secret"
 class TokenData(BaseModel):
     username: str
     roles: List[str]
+    token: str
 
 async def validate_token_introspect(token: str) -> TokenData:
     token = token.replace("Bearer ", "")
@@ -42,7 +43,8 @@ async def validate_token_introspect(token: str) -> TokenData:
 
     return TokenData(
         username=result.get("preferred_username", "desconhecido"),
-        roles=result.get("realm_access", {}).get("roles", [])
+        roles=result.get("realm_access", {}).get("roles", []),
+        token=token
     )
 
 async def validate_token(token: str = Depends(oauth2_scheme)) -> TokenData:

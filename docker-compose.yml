@@ -30,7 +30,7 @@ services:
 
   chipset-service:
     build:
-      context: ./microservice-chipset
+      context: ./microservice_chipset
       dockerfile: Dockerfile
     container_name: chipset-service
     expose:

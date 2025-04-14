@@ -1,0 +1,5 @@
+#Notes para transforar em readme depois
+
+Pedir o token de service account grant_type = client_credentials
+
+pedir token do usuário grant_type = client_credentials
