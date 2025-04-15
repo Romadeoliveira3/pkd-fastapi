@@ -21,7 +21,7 @@
       "optionalClientScopes": ["address", "phone"],
       "attributes": {
         "access.token.as.jwt": "false",
-        "acess.token.lifespan": 999999
+        "acess.token.lifespan": 99999999999
       }
     }
   ],

@@ -12,7 +12,18 @@ class NovoUsuario(BaseModel):
     email: EmailStr
     firstName: str
     lastName: str
+    password: str
+    temporary: bool = False
     enabled: bool = True
+    emailVerified: bool = True
+
+    @property
+    def credentials(self) -> list[dict]:
+        return [{
+            "type": "password",
+            "value": self.password,
+            "temporary": self.temporary
+        }]
 
 
 @user_router.get("/login", summary="Obter token de acesso do Keycloak")
@@ -48,8 +59,15 @@ async def user_signup(
         "Authorization": f"Bearer {current_user.token}"  
     }
 
-    user_payload = user.model_dump()
-    user_payload["emailVerified"] = True
+    user_payload = {
+        "username": user.username,
+        "email": user.email,
+        "enabled": user.enabled,
+        "firstName": user.firstName,
+        "lastName": user.lastName,
+        "credentials": user.credentials,
+        "emailVerified": user.emailVerified
+    }
 
     async with httpx.AsyncClient() as client:
         response = await client.post(KEYCLOAK_CREATE_USER_URL, headers=headers, json=user_payload)

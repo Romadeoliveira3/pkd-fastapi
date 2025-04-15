@@ -13,9 +13,6 @@ logs:
 	$(COMPOSE) logs -f
 
 down:
-	$(COMPOSE) down
-
-down-v:
 	$(COMPOSE) down -v
 
 restart: down up
